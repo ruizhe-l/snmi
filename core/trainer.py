@@ -69,36 +69,39 @@ class Trainer:
 
             # evaluation on validation dataset
             if eval_frequency is not None and (eval_frequency < 1 or ep % eval_frequency == 0 or ep == epochs - 1):
+                # training set evaluation
                 eval_train_results = self.eval(train_loader, desc=f'    Evaluation: training data   ', log_image=log_train_image)
-                eval_valid_results = self.eval(validation_loader, desc=f'    Evaluation: evaluation data ', log_image=log_validation_image)
-
                 if log_train_image:
                     eval_train_image = eval_train_results.pop('image')
                     logwriter_train.write_image(eval_train_image, ep)
-
-                if log_validation_image:
-                    eval_valid_image = eval_valid_results.pop('image')
-                    logwriter_valid.write_image(eval_valid_image, ep)
-
                 logwriter_train.write_scalar(U.dict_mean(eval_train_results), ep)
-                logwriter_valid.write_scalar(U.dict_mean(eval_valid_results), ep)
 
-                # save best ckpt
-                if val_loss_key is not None and val_loss_key in eval_valid_results:
-                    cur_val_loss = np.mean(eval_valid_results[val_loss_key])
-                    if best_val_loss is None or cur_val_loss < best_val_loss:
-                        self.save(f'{output_path}/ckpt/model_best.pt')
-                        best_val_loss = cur_val_loss
+                # validation set evaluation
+                if validation_loader is not None:
+                    eval_valid_results = self.eval(validation_loader, desc=f'    Evaluation: evaluation data ', log_image=log_validation_image)
 
-                    # early stop
-                    if early_stop_patience is not None:
-                        if cur_val_loss > best_val_loss:
-                            early_stop_count += 1
-                        else:
-                            early_stop_count = 0
-                        if early_stop_count > early_stop_patience:
-                            break
+                    if log_validation_image:
+                        eval_valid_image = eval_valid_results.pop('image')
+                        logwriter_valid.write_image(eval_valid_image, ep)
 
+                
+                    logwriter_valid.write_scalar(U.dict_mean(eval_valid_results), ep)
+
+                    # save best ckpt
+                    if val_loss_key is not None and val_loss_key in eval_valid_results:
+                        cur_val_loss = np.mean(eval_valid_results[val_loss_key])
+                        if best_val_loss is None or cur_val_loss < best_val_loss:
+                            self.save(f'{output_path}/ckpt/model_best.pt')
+                            best_val_loss = cur_val_loss
+
+                        # early stop
+                        if early_stop_patience is not None:
+                            if cur_val_loss > best_val_loss:
+                                early_stop_count += 1
+                            else:
+                                early_stop_count = 0
+                            if early_stop_count > early_stop_patience:
+                                break
 
             # save checkpoint
             if save_frequency is not None and (save_frequency < 1 or ep % save_frequency == 0):
