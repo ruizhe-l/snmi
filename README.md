@@ -1,4 +1,4 @@
-# Framework-PyTorch
+# Simple Networks for Medical Imaging (SNMI) 
 
 A customized PyTorch framework for medical image analysis.
 
