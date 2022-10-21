@@ -58,12 +58,14 @@ class Trainer:
                 ep_train_loss = []
                 for batch in train_loader:
                     train_loss = self.model.train_step(batch, ep)
+                    train_loss = [train_loss] if train_loss is not list else train_loss
                     ep_train_loss.append(train_loss)
                     pbar.update(train_loader.batch_size)
-                    pbar.set_postfix_str(f'\tbatch - loss: {train_loss:.4f}')
+                    
+                    pbar.set_postfix_str(f"\tbatch - loss: {[f'{x:.4f}' for x in train_loss]}")
                 
                 lrs = [o.param_groups[0]['lr'] for o in optimizers]
-                pbar.set_postfix_str(f'\ttotal - loss: {np.mean(ep_train_loss):.4f}, lr: {lrs}')
+                pbar.set_postfix_str(f'\ttotal - loss: {np.mean(ep_train_loss, 0)}, lr: {lrs}')
                 if learning_rate_schedule is not None:
                     learning_rate_schedule.step()
 
