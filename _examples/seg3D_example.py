@@ -4,8 +4,9 @@ import scipy.io as sio
 import torch
 from torch.utils.data.dataloader import DataLoader
 
+import os
 import sys
-sys.path.append('../../')
+sys.path.insert(0, os.path.dirname(__file__) + '/../../')
 from snmi.core import Trainer, BaseDataset
 from snmi.nets import SegModel
 from snmi.nets.unet2D import Unet3D
