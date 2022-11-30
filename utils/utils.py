@@ -235,9 +235,10 @@ def combine_2d_imgs_from_tensor(img_list, nmin=None, nmax=None, channel_first=Fa
 
 def combine_3d_imgs_from_tensor(img_list, vis_slices, nmin=None, nmax=None, channel_first=False):
     tmp = img_list[0]
-    if channel_first:
-        tmp = tmp.transpose(0, 2, 3, 4, 1)
-    vis_slices = min(vis_slices, tmp.shape[-2])
+    if len(tmp.shape) == 5:
+        tmp = tmp[:,0,...] if channel_first else tmp[..., 0]
+            
+    vis_slices = min(vis_slices, tmp.shape[-1])
     idx = [int(tmp.shape[-1] // vis_slices * (s + 0.5)) for s in range(vis_slices)]
     imgs = None
     for n in range(tmp.shape[0]):
@@ -245,9 +246,10 @@ def combine_3d_imgs_from_tensor(img_list, vis_slices, nmin=None, nmax=None, chan
         for xs in img_list:
             assert len(xs.shape) in [4, 5]
             tmp_xs = np.array(xs[n])
-            if channel_first and len(tmp_xs.shape) == 4:
-                tmp_xs = tmp_xs.transpose(1, 2, 3, 0)
-            tmp_list.append(tmp_xs[..., idx, 0]) if len(tmp_xs.shape) == 4 else tmp_list.append(tmp_xs[..., idx])
+            if len(tmp_xs.shape) == 4:
+                tmp_xs = tmp_xs[0] if channel_first else tmp_xs[..., 0]
+            tmp_xs = tmp_xs[..., idx]
+            tmp_list.append(tmp_xs.transpose(2, 0, 1))
         img = combine_2d_imgs_from_tensor(tmp_list, nmin=nmin, nmax=nmax)
         imgs = img if imgs is None else np.concatenate((imgs, img), 0)
     return imgs
