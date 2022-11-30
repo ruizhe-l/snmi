@@ -17,7 +17,7 @@ def load_file(path, dtype=np.float32):
     assert os.path.isfile(path), 'File {} not found!'.format(path)
     suffix = path.split('.')[-1]
     # Nifty load
-    if suffix in ['gz', 'nii']:
+    if suffix in ['nii.gz', 'nii', 'gz']:
         data = nib.load(path)
         return np.array(data.dataobj).astype(dtype)
 
@@ -42,6 +42,8 @@ def load_file(path, dtype=np.float32):
         pass
     else:
         return np.array(data, dtype)
+
+    
     
 
     raise IOError('Invalid data type: {}'%path)
@@ -222,6 +224,8 @@ def combine_2d_imgs_from_tensor(img_list, nmin=None, nmax=None, channel_first=Fa
             if im.shape[-1] != 3:
                 im = im[..., 0]
                 im = gray2rgb(im)
+        else:
+            im = gray2rgb(im)
             
         im = recale_array(im, nmin=nmin, nmax=nmax)
         im = im.reshape(-1, im.shape[-2], im.shape[-1])
@@ -233,7 +237,7 @@ def combine_3d_imgs_from_tensor(img_list, vis_slices, nmin=None, nmax=None, chan
     tmp = img_list[0]
     if channel_first:
         tmp = tmp.transpose(0, 2, 3, 4, 1)
-    vis_slices = min(vis_slices, tmp.shape[-1])
+    vis_slices = min(vis_slices, tmp.shape[-2])
     idx = [int(tmp.shape[-1] // vis_slices * (s + 0.5)) for s in range(vis_slices)]
     imgs = None
     for n in range(tmp.shape[0]):
@@ -241,9 +245,9 @@ def combine_3d_imgs_from_tensor(img_list, vis_slices, nmin=None, nmax=None, chan
         for xs in img_list:
             assert len(xs.shape) in [4, 5]
             tmp_xs = np.array(xs[n])
-            if channel_first and len(xs.shape) == 4:
+            if channel_first and len(tmp_xs.shape) == 4:
                 tmp_xs = tmp_xs.transpose(1, 2, 3, 0)
-            tmp_list.append(tmp_xs[..., idx, 0]) if len(xs.shape) == 4 else tmp_list.append(tmp_xs[..., idx])
+            tmp_list.append(tmp_xs[..., idx, 0]) if len(tmp_xs.shape) == 4 else tmp_list.append(tmp_xs[..., idx])
         img = combine_2d_imgs_from_tensor(tmp_list, nmin=nmin, nmax=nmax)
         imgs = img if imgs is None else np.concatenate((imgs, img), 0)
     return imgs
