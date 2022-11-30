@@ -48,11 +48,11 @@ class BaseDataset(Dataset):
         
         self._file_list = None
         self._all_data = None
-        if type(data) is str:
+        if isinstance(data, (str)):
             self._file_list = glob.glob(data)
-        elif type(data) is list or type(data) is np.ndarray:
+        elif isinstance(data, (list, np.ndarray)):
             self._file_list = data
-        elif type(data) is dict:
+        elif isinstance(data, dict):
             self._all_data = data
         else:
             raise ValueError('Only accept one of (search_path, file_list, data_dict).')
@@ -92,6 +92,40 @@ class BaseDataset(Dataset):
         
         return self._augmentation(data_dict)
 
+class PairedDataset(BaseDataset):
+    def __init__(self, data_more, data_less, more_key, less_key, data_suffix, preprocesses=None, augmentation=None):
+
+        assert isinstance(data_more, (list, np.ndarray)), 'Only accpet filename list.'
+        assert isinstance(data_more, (list, np.ndarray)), 'Only accpet filename list.'
+        while len(data_more) < len(data_less):
+            data_more = list(data_more) * 2
+        if preprocesses:
+            new_preprocesses = {}
+            [new_preprocesses.update({more_key+k: v}) for k, v in preprocesses.items()]
+            [new_preprocesses.update({less_key+k: v}) for k, v in preprocesses.items()]
+        super().__init__(data_more, data_suffix, new_preprocesses, augmentation)
+        
+        self._data_more = self._file_list
+        self._data_less = data_less
+        self._more_key = more_key
+        self._less_key = less_key
+
+    def __getitem__(self, idx):
+        data_dict = {}
+
+        x_name = self._data_more[idx] # source
+        data_dict.update({self._more_key + self._org_suffix: load_file(x_name)})
+        y_name = self._data_less[idx % len(self._data_less)] #target
+        data_dict.update({self._less_key + self._org_suffix: load_file(y_name)})
+        for o_suffix in self._other_suffix:
+            o_name = x_name.replace(self._org_suffix, o_suffix) # source labels
+            data_dict.update({self._more_key + o_suffix: load_file(o_name)})
+            yo_name = y_name.replace(self._org_suffix, o_suffix) # target labels
+            data_dict.update({self._less_key + o_suffix: load_file(yo_name)})
+
+        data_dict = self.augmentation(data_dict)
+        data_dict = self.pre_process(data_dict)
+        return data_dict
 
 
 
