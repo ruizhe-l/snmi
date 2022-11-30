@@ -62,7 +62,7 @@ class Trainer:
                     ep_train_loss.append(train_loss)
                     pbar.update(train_loader.batch_size)
                     
-                    pbar.set_postfix_str(f"\tbatch - loss: {[f'{x:.4f}' for x in train_loss]}")
+                    pbar.set_postfix_str(f"\tbatch - loss: {train_loss}")
                 
                 lrs = [o.param_groups[0]['lr'] for o in optimizers]
                 pbar.set_postfix_str(f'\ttotal - loss: {np.mean(ep_train_loss, 0)}, lr: {lrs}')
@@ -73,7 +73,7 @@ class Trainer:
             if eval_frequency is not None and (eval_frequency < 1 or ep % eval_frequency == 0 or ep == epochs - 1):
                 # training set evaluation
                 eval_train_results = self.eval(train_loader, desc=f'    Evaluation: training data   ', log_image=log_train_image)
-                if log_train_image:
+                if log_train_image and 'image' in eval_valid_results:
                     eval_train_image = eval_train_results.pop('image')
                     logwriter_train.write_image(eval_train_image, ep)
                 logwriter_train.write_scalar(U.dict_mean(eval_train_results), ep)
@@ -82,7 +82,7 @@ class Trainer:
                 if validation_loader is not None:
                     eval_valid_results = self.eval(validation_loader, desc=f'    Evaluation: evaluation data ', log_image=log_validation_image)
 
-                    if log_validation_image:
+                    if log_validation_image and 'image' in eval_valid_results:
                         eval_valid_image = eval_valid_results.pop('image')
                         logwriter_valid.write_image(eval_valid_image, ep)
 
@@ -120,7 +120,7 @@ class Trainer:
             all_imgs = {}
             for batch in data_loader:
                 results = self.model.eval_step(batch, **kwargs)
-                if log_image:
+                if log_image and 'image' in results:
                     imgs = results.pop('image')
                     all_imgs = U.dict_concat(all_imgs, imgs)
                 all_results = U.dict_concat(all_results, results)
@@ -154,19 +154,32 @@ class Trainer:
         nets = self.model.net if type(self.model.net) is list else [self.model.net]
         [nets[i].load_state_dict(ckpt[f'net{i}']) for i in range(len(nets))]
 
-    def test(self, data_loader, output_path, log_image=True):
-        test_results = self.eval(data_loader, desc=f'Evaluation: test data ', log_image=log_image)
+    def test(self, data_loader, output_path, **kwargs):
 
         timestr = time.strftime("%Y%m%d-%H%M%S")
         logwriter_test = self.log_writer(f'{output_path}/log/{timestr}/test')
 
-        if log_image:
-            test_image = test_results['image']
-            logwriter_test.write_image(test_image, self.cur_epoch)
-        logwriter_test.write_text(U.dict_to_str(test_results), self.cur_epoch)
-        
+        log_image = kwargs.get('log_image', False)
+
+        with tqdm(total=len(data_loader.dataset), desc=f'Evaluation: test data ', **tqdm_setting) as pbar:
+            test_results = {}
+            i = 0
+            for batch in data_loader:
+                results = self.model.eval_step(batch, **kwargs)
+                if log_image and 'image' in results:
+                    imgs = results['image']
+                    logwriter_test.write_image(imgs, i)
+                test_results = U.dict_concat(test_results, results)
+                pbar.update(data_loader.batch_size)
+                pbar.set_postfix_str('\tbatch - ' + U.dict_to_str(results))
+                i += 1
+            str_test_results = U.dict_to_str(test_results)
+            pbar.set_postfix_str('\ttotal - ' + str_test_results)
+
+        logwriter_test.write_text(str_test_results, self.cur_epoch)
 
         return test_results
+
 
         
 
