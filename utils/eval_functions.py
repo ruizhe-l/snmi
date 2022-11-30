@@ -58,14 +58,17 @@ def accuracy(pred, gt):
     axis = tuple(range(1, pred.ndim))
     return (pred == gt).mean(axis)
 
-def dice_coefficient(pred, gt, epsilon=1e-9):
+def dice_coefficient(pred, gt, epsilon=1e-9, ignore_background=False):
     """ 2 * intersection(pred, gt) / (pred + gt) 
         2 * tp / (2*tp + fp + fn)
     """
     axis = tuple(range(2, pred.ndim))
     intersection = (pred * gt).sum(axis)
     sum_ = (pred + gt).sum(axis)
-    return 2 * intersection / (sum_ + epsilon)
+    dice = 2 * intersection / (sum_ + epsilon)
+    if ignore_background:
+        dice = dice[:, 1:]
+    return dice
 
 def iou(pred, gt, epsilon=1e-9):
     """ intersection(pred, gt) / union(pred, gt)
