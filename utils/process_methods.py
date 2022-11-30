@@ -100,13 +100,14 @@ class Crop:
             
 # Label-----------------------------------------------
 class OneHot:
-    def __init__(self, n_classes):
+    def __init__(self, n_classes, dtype=np.float32):
         self.n_classes = n_classes
+        self.dtype = dtype
 
     def __call__(self, x):
         nc = list(range(self.n_classes)) if type(self.n_classes) is int else self.n_classes
         if type(nc) in [list, tuple, np.ndarray]:
-            x_ = np.zeros([len(nc)] + list(x.shape))
+            x_ = np.zeros([len(nc)] + list(x.shape), self.dtype)
             for i in range(len(nc)):
                 x_[i, ...][x == nc[i]] = 1
         else:
